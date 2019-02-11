@@ -8,7 +8,7 @@ class MarkovGenerator {
 		~MarkovGenerator(void);
 		char next(char note);
 		//char next(void);
-		//void loadMidi(std::string midi);
+		void loadMidi(std::string midi_file);
 		void loadMidi(std::string midi[], size_t size);
 	protected:
 		static int probabilities[12][12];
