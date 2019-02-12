@@ -11,7 +11,7 @@ class MarkovGenerator {
 		void loadMidi(std::string midi_file);
 		void loadMidi(std::string midi[], size_t size);
 	protected:
-		unsigned int wordToInt(char c[]);
+		unsigned int valueToInt(char c[], int size);
 		static int probabilities[12][12];
 		static char last_note;
 		char stringToMidi(std::string note);
