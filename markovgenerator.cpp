@@ -5,17 +5,26 @@
 
 #include"markovgenerator.h"
 
-MarkovGenerator::MarkovGenerator() {
-	
+//Update the ceiling for RNG for the last note played
+void MarkovGenerator::updateCeiling() {
+	random_ceiling = 0;
+	for (int i = 0; i < 12; i++) {
+		std::cout << probabilities[last_note][i] << " ";
+		if (probabilities[last_note][i] > random_ceiling) {
+			random_ceiling = probabilities[last_note][i];
+		}
+		std::cout << std::endl;
+	}
+	std::cout << random_ceiling << std::endl;
 }
 
-//big endian, constant length format. currently, this conversion means it only supports little-endian machines - could add detection later
-unsigned int MarkovGenerator::valueToInt(char c[], int size) {
-	unsigned int value = 0; 
-	for (int i = 0; i < size; i++) {
-		value |= c[size - i - 1] << (8 * i);
+void MarkovGenerator::printMatrix() {
+	for (int i = 0; i < 12; i++) {
+		for (int j = 0; j < 12; j++) {
+			std::cout << probabilities[i][j] << " ";
+		}
+		std::cout << std::endl;
 	}
-	return value;
 }
 
 void MarkovGenerator::loadMidi(std::string midi_file) {
@@ -27,13 +36,16 @@ void MarkovGenerator::loadMidi(std::string midi_file) {
 	}
 	midifile.joinTracks();
 	int track = 0;
-	int lastNote = 0;
+	int last = 0;
+	int next = 0;
 	for (int i = 0; i < midifile[track].size(); i++) {
 		if (midifile[track][i].isNoteOn()) {
-			lastNote = midifile[track][i][1] % 12;
-			std::cout<<lastNote << "\t";
+			next = midifile[track][i][1] % 12;
+			probabilities[last][next] += 1;
+			last = next;
 		}
 	}
+	printMatrix();
 }
 
 void MarkovGenerator::loadMidi(std::string midi[], size_t size) {
