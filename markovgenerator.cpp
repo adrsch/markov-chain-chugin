@@ -1,23 +1,19 @@
 #include<iostream>
 #include<fstream>
 #include<string>
+#include<random>
 #include"./midifile/MidiFile.h"
 
 #include"markovgenerator.h"
 
-//Update the ceiling for RNG for the last note played
-void MarkovGenerator::updateCeiling() {
-	random_ceiling = 0;
+//Get the ceiling for RNG for a note
+int MarkovGenerator::getCeiling(char note) {
+	int random_ceiling = 0;
 	for (int i = 0; i < 12; i++) {
-		std::cout << probabilities[last_note][i] << " ";
-		if (probabilities[last_note][i] > random_ceiling) {
-			random_ceiling = probabilities[last_note][i];
-		}
-		std::cout << std::endl;
+		random_ceiling += probabilities[note%12][i];
 	}
-	std::cout << random_ceiling << std::endl;
+	return random_ceiling;
 }
-
 void MarkovGenerator::printMatrix() {
 	for (int i = 0; i < 12; i++) {
 		for (int j = 0; j < 12; j++) {
@@ -52,11 +48,39 @@ void MarkovGenerator::loadMidi(std::string midi[], size_t size) {
 }
 
 char MarkovGenerator::next(char note) {
-	return 0;
+	last_note = note % 12;
+	return next();
 }
 
+//iffy thing: if you end up in a situation where there's no notes in the table to jump to from the last, it'll always send you to C. 
+char MarkovGenerator::next() {
+	std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note)); //generator for a number from 0 to the sum of the entries for a note in the table
+	int rng_result = gen(rng);
+	//next, to find what we got and return it
+	char i = 0;
+	for (int total = 0; total < rng_result; i++) {
+		total += probabilities[last_note][i];
+	}
+	last_note = i;
+	return last_note + (12 * octave);
+}
+
+void MarkovGenerator::setLast(char note) {
+	last_note = note;
+}
+
+//TODO: convert note names ie C C# to 0-12, perhaps also C3 to 3rd octave C
 char MarkovGenerator::stringToMidi(std::string note) {
 	return 0;
 }
 
-MarkovGenerator::~MarkovGenerator(){}
+int MarkovGenerator::getSeed() {
+	return seed;
+}
+
+void MarkovGenerator::setSeed(int new_seed) {
+	seed = new_seed;
+	rng.seed(seed);
+}
+
+MarkovGenerator::~MarkovGenerator() { }
