@@ -1,4 +1,15 @@
-Type make markovgenerator to produce the library file, libmarkovgenerator.so
+To use, type make <platform name>
+Where platform name is either linux, win32, or osx.
+
+Afterwards, type make install
+
+To use in Chuck:
+MarkovGenerator mgen;
+
+
+
+
+
 
 
 This uses the midifile library, with the below license:
