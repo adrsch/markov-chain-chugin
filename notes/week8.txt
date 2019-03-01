@@ -1,0 +1,5 @@
+This week, I worked on integration into Chuck.
+
+A python script to generate a makefile and other relevant files is provided for Chugin creation, however I found it did not actually produce a plugin that could be loaded and used in Chuck. It didn't help that the documentation for the plugin was something along the lines of "Documentation will be added soon" (the last commit was over a year ago).
+
+So, I started seeing how my broken result differed from example chugins provided. To my surprise, the first couple examples I tried also didn't work, but eventually I found one that did. I replaced the chugin's cpp code with the skeleton I had received from the script, and to my surprise it still worked. I am not sure what the problem actually was, as the makefiles were identical, so it likely was in one of the many header files for chuck that are used during compilation. Either way, the result of this was a working skeleton, ready to be filled in with the working code I created in the past weeks.
