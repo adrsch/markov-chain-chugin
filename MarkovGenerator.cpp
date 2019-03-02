@@ -7,10 +7,16 @@
 #include "chuck_dl.h"
 #include "chuck_def.h"
 
+#include "./midifile/MidiFile.h"
+
 // general includes
 #include <stdio.h>
 #include <limits.h>
-#include<iostream>
+
+#include <random>
+#include <string>
+#include <fstream>
+#include <iostream>
 
 // declaration of chugin constructor
 CK_DLL_CTOR(MarkovGenerator_ctor);
@@ -34,12 +40,78 @@ t_CKINT MarkovGenerator_data_offset = 0;
 class MarkovGenerator
 {
 public:
-    // constructor
-    MarkovGenerator()
-    {
-        m_param = 0;
-    }
 
+	MarkovGenerator(t_CKINT note = 0) : m_param(0), probabilities(), last_note(note%12), octave(note/12), seed(std::random_device()()) {}
+
+	void loadMidi(std::string midi_file) 
+	{
+		smf::MidiFile midifile;
+		midifile.read(midi_file);
+		if (!midifile.status()) 
+		{
+			std::cout << "bad file name" << std::endl;
+			return;
+		}
+		midifile.joinTracks();
+		int track = 0;
+		int last = 0;
+		int next = 0;
+		for (int i = 0; i < midifile[track].size(); i++) 
+		{
+			if (midifile[track][i].isNoteOn()) 
+			{
+				next = midifile[track][i][1] % 12;
+				probabilities[last][next] += 1;
+				last = next;
+			}
+		}
+		printMatrix();
+	}
+
+	t_CKINT next()
+	{
+		std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note)); //Generator for a number from 0 to the sum of the entries for a note in the table
+		int rng_result = gen(rng);
+		//Next, to find what we got and return it
+		char i = 0;
+		for (int total = 0; total < rng_result; i++) { total += probabilities[last_note][i]; }
+		last_note = i;
+		return last_note + (12 * octave);
+	}
+
+
+
+	//Sets the current note to the passed note, and calls standard next() function
+	t_CKINT next(t_CKINT note) 
+	{
+		last_note = note % 12;
+		return next();
+	}
+
+	t_CKINT getSeed() { return seed; }
+	
+	t_CKINT setSeed(t_CKINT new_seed)
+	{
+		seed = new_seed;
+		rng.seed(seed);
+		return new_seed;
+	}
+
+	void setLast(t_CKINT note) 
+	{
+		last_note = note;
+	}
+
+	void printMatrix() 
+	{
+		for (int i = 0; i < 12; i++) {
+			for (int j = 0; j < 12; j++) {
+				std::cout << probabilities[i][j] << " ";
+			}
+			std::cout << std::endl;
+		}
+	}
+	
     // for Chugins extending UGen
     SAMPLE tick( SAMPLE in )
     {
@@ -60,6 +132,24 @@ public:
 private:
     // instance data
     t_CKFLOAT m_param;
+
+
+	// instance data
+	t_CKINT seed;
+	std::mt19937 rng;
+	t_CKINT octave;
+	int probabilities[12][12];
+	t_CKINT last_note;
+
+	int getCeiling(int note) 
+	{
+		int random_ceiling = 0;
+		for ( int i = 0; i < 12; i++ ) 
+		{
+			random_ceiling += probabilities[note%12][i];
+		}
+		return random_ceiling;
+	}
 };
 
 
@@ -68,105 +158,105 @@ private:
 // add additional functions to this Chugin
 CK_DLL_QUERY( MarkovGenerator )
 {
-    // hmm, don't change this...
-    QUERY->setname(QUERY, "MarkovGenerator");
-    
-    // begin the class definition
-    // can change the second argument to extend a different ChucK class
-    QUERY->begin_class(QUERY, "MarkovGenerator", "UGen");
+	// hmm, don't change this...
+	QUERY->setname(QUERY, "MarkovGenerator");
+	
+	// begin the class definition
+	// can change the second argument to extend a different ChucK class
+	QUERY->begin_class(QUERY, "MarkovGenerator", "UGen");
 
-    // register the constructor (probably no need to change)
-    QUERY->add_ctor(QUERY, MarkovGenerator_ctor);
-    // register the destructor (probably no need to change)
-    QUERY->add_dtor(QUERY, MarkovGenerator_dtor);
-    
-    // for UGen's only: add tick function
-    QUERY->add_ugen_func(QUERY, MarkovGenerator_tick, NULL, 1, 1);
-    
-    // NOTE: if this is to be a UGen with more than 1 channel, 
-    // e.g., a multichannel UGen -- will need to use add_ugen_funcf()
-    // and declare a tickf function using CK_DLL_TICKF
+	// register the constructor (probably no need to change)
+	QUERY->add_ctor(QUERY, MarkovGenerator_ctor);
+	// register the destructor (probably no need to change)
+	QUERY->add_dtor(QUERY, MarkovGenerator_dtor);
+	
+	// for UGen's only: add tick function
+	QUERY->add_ugen_func(QUERY, MarkovGenerator_tick, NULL, 1, 1);
+	
+	// NOTE: if this is to be a UGen with more than 1 channel, 
+	// e.g., a multichannel UGen -- will need to use add_ugen_funcf()
+	// and declare a tickf function using CK_DLL_TICKF
 
-    // example of adding setter method
-    QUERY->add_mfun(QUERY, MarkovGenerator_setParam, "float", "param");
-    // example of adding argument to the above method
-    QUERY->add_arg(QUERY, "float", "arg");
+	// example of adding setter method
+	QUERY->add_mfun(QUERY, MarkovGenerator_setParam, "float", "param");
+	// example of adding argument to the above method
+	QUERY->add_arg(QUERY, "float", "arg");
 
-    // example of adding getter method
-    QUERY->add_mfun(QUERY, MarkovGenerator_getParam, "float", "param");
-    
-    // this reserves a variable in the ChucK internal class to store 
-    // referene to the c++ class we defined above
-    MarkovGenerator_data_offset = QUERY->add_mvar(QUERY, "int", "@m_data", false);
+	// example of adding getter method
+	QUERY->add_mfun(QUERY, MarkovGenerator_getParam, "float", "param");
+	
+	// this reserves a variable in the ChucK internal class to store 
+	// referene to the c++ class we defined above
+	MarkovGenerator_data_offset = QUERY->add_mvar(QUERY, "int", "@m_data", false);
 
-    // end the class definition
-    // IMPORTANT: this MUST be called!
-    QUERY->end_class(QUERY);
+	// end the class definition
+	// IMPORTANT: this MUST be called!
+	QUERY->end_class(QUERY);
 
-    // wasn't that a breeze?
-    return TRUE;
+	// wasn't that a breeze?
+	return TRUE;
 }
 
 
 // implementation for the constructor
 CK_DLL_CTOR(MarkovGenerator_ctor)
 {
-    // get the offset where we'll store our internal c++ class pointer
-    OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = 0;
-    
-    // instantiate our internal c++ class representation
-    MarkovGenerator * m_obj = new MarkovGenerator();
-    
-    // store the pointer in the ChucK object member
-    OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = (t_CKINT) m_obj;
+	// get the offset where we'll store our internal c++ class pointer
+	OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = 0;
+	
+	// instantiate our internal c++ class representation
+	MarkovGenerator * m_obj = new MarkovGenerator();
+	
+	// store the pointer in the ChucK object member
+	OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = (t_CKINT) m_obj;
 }
 
 
 // implementation for the destructor
 CK_DLL_DTOR(MarkovGenerator_dtor)
 {
-    // get our c++ class pointer
-    MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-    // check it
-    if( m_obj )
-    {
-        // clean up
-        delete m_obj;
-        OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = 0;
-        m_obj = NULL;
-    }
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// check it
+	if( m_obj )
+	{
+		// clean up
+		delete m_obj;
+		OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = 0;
+		m_obj = NULL;
+	}
 }
 
 
 // implementation for tick function
 CK_DLL_TICK(MarkovGenerator_tick)
 {
-    // get our c++ class pointer
-    MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
  
-    // invoke our tick function; store in the magical out variable
-    if(m_obj) *out = m_obj->tick(in);
+	// invoke our tick function; store in the magical out variable
+	if(m_obj) *out = m_obj->tick(in);
 
-    // yes
-    return TRUE;
+	// yes
+	return TRUE;
 }
 
 
 // example implementation for setter
 CK_DLL_MFUN(MarkovGenerator_setParam)
 {
-    // get our c++ class pointer
-    MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-    // set the return value
-    RETURN->v_float = m_obj->setParam(GET_NEXT_FLOAT(ARGS));
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_float = m_obj->setParam(GET_NEXT_FLOAT(ARGS));
 }
 
 
 // example implementation for getter
 CK_DLL_MFUN(MarkovGenerator_getParam)
 {
-    // get our c++ class pointer
-    MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-    // set the return value
-    RETURN->v_float = m_obj->getParam();
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_float = m_obj->getParam();
 }
