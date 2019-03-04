@@ -23,10 +23,6 @@ CK_DLL_CTOR(MarkovGenerator_ctor);
 // declaration of chugin desctructor
 CK_DLL_DTOR(MarkovGenerator_dtor);
 
-// example of getter/setter
-CK_DLL_MFUN(MarkovGenerator_setParam);
-CK_DLL_MFUN(MarkovGenerator_getParam);
-
 CK_DLL_MFUN(MarkovGenerator_loadMidi);
 CK_DLL_MFUN(MarkovGenerator_next);
 CK_DLL_MFUN(MarkovGenerator_setLast);
@@ -34,8 +30,6 @@ CK_DLL_MFUN(MarkovGenerator_printMatrix);
 CK_DLL_MFUN(MarkovGenerator_setSeed);
 CK_DLL_MFUN(MarkovGenerator_getSeed);
 
-// for Chugins extending UGen, this is mono synthesis function for 1 sample
-CK_DLL_TICK(MarkovGenerator_tick);
 
 // this is a special offset reserved for Chugin internal data
 t_CKINT MarkovGenerator_data_offset = 0;
@@ -49,7 +43,7 @@ class MarkovGenerator
 {
 public:
 
-	MarkovGenerator(t_CKINT note = 0) : m_param(0), probabilities(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
+	MarkovGenerator(t_CKINT note = 0) : probabilities(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
 
 	void loadMidi(std::string midi_file = "test.mid") 
@@ -91,14 +85,6 @@ public:
 	}
 
 
-
-	//Sets the current note to the passed note, and calls standard next() function
-	t_CKINT next(t_CKINT note) 
-	{
-		last_note = note % 12;
-		return next();
-	}
-
 	t_CKINT getSeed() { return seed; }
 	
 	t_CKINT setSeed(t_CKINT new_seed)
@@ -126,28 +112,7 @@ public:
 		}
 	}
 	
-    // for Chugins extending UGen
-    SAMPLE tick( SAMPLE in )
-    {
-        // default: this passes whatever input is patched into Chugin
-        return in;
-    }
-
-    // set parameter example
-    t_CKFLOAT setParam( t_CKFLOAT p )
-    {
-        m_param = p;
-        return p;
-    }
-
-    // get parameter example
-    t_CKFLOAT getParam() { return m_param; }
-    
 private:
-    // instance data
-    t_CKFLOAT m_param;
-
-
 	// instance data
 	t_CKINT seed;
 	std::mt19937 rng;
@@ -184,8 +149,6 @@ CK_DLL_QUERY( MarkovGenerator )
 	// register the destructor (probably no need to change)
 	QUERY->add_dtor(QUERY, MarkovGenerator_dtor);
 	
-	// for UGen's only: add tick function
-	QUERY->add_ugen_func(QUERY, MarkovGenerator_tick, NULL, 1, 1);
 	
 	// NOTE: if this is to be a UGen with more than 1 channel, 
 	// e.g., a multichannel UGen -- will need to use add_ugen_funcf()
@@ -247,20 +210,6 @@ CK_DLL_DTOR(MarkovGenerator_dtor)
 	}
 }
 
-
-// implementation for tick function
-CK_DLL_TICK(MarkovGenerator_tick)
-{
-	// get our c++ class pointer
-	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
- 
-	// invoke our tick function; store in the magical out variable
-	if(m_obj) *out = m_obj->tick(in);
-
-	// yes
-	return TRUE;
-}
-
 CK_DLL_MFUN(MarkovGenerator_loadMidi)
 {
 	// get our c++ class pointer
@@ -289,16 +238,6 @@ CK_DLL_MFUN(MarkovGenerator_setSeed)
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	// set the return value
 	RETURN->v_int = m_obj->setSeed(GET_NEXT_INT(ARGS));
-}
-
-
-// example implementation for getter
-CK_DLL_MFUN(MarkovGenerator_getParam)
-{
-	// get our c++ class pointer
-	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-	// set the return value
-	RETURN->v_float = m_obj->getParam();
 }
 
 CK_DLL_MFUN(MarkovGenerator_next)
