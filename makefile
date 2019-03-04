@@ -4,7 +4,7 @@ CHUGIN_NAME=MarkovGenerator
 
 # all of the c/cpp files that compose this chugin
 C_MODULES=
-CXX_MODULES=MarkovGenerator.cpp
+CXX_MODULES=MarkovGenerator.cpp $(wildcard midifile/*.cpp)
 
 # where the chuck headers are
 CK_SRC_PATH?=./chuck/include/

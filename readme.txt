@@ -5,8 +5,11 @@ Afterwards, type make install
 
 To use in Chuck:
 MarkovGenerator mgen;
-
-
+mgen.loadMidi("filename.mid");
+mgen.printMatrix(); //print the matrix used for generation - each number is a note played in the loaded midis
+mgen.last(0); //this sets the prior note for generation, in midi numbering (0-12 is C0 to C1). by default, C0 is used.
+<<<mgen.next()>>> //this function gets the next note from the generator, in midi numbering.
+mgen.seed() => mgen.seed; //this is the seed used for generation. if you like what you get, save the seed!
 
 
 
