@@ -73,7 +73,6 @@ public:
 
 	t_CKINT next()
 	{
-		setSeed(seed);
 		std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note)); //Generator for a number from 0 to the sum of the entries for a note in the table
 		int rng_result = gen(rng);
 		//Next, to find what we got and return it
@@ -189,6 +188,9 @@ CK_DLL_CTOR(MarkovGenerator_ctor)
 	
 	// instantiate our internal c++ class representation
 	MarkovGenerator * m_obj = new MarkovGenerator();
+	
+	// set the seed
+	m_obj -> setSeed(m_obj -> getSeed());
 	
 	// store the pointer in the ChucK object member
 	OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = (t_CKINT) m_obj;
