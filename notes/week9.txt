@@ -1,0 +1,1 @@
+This week, I added variable-order generation (up to 3rd order). By default, it will randomly choose which order of generation to use, to try to mitigate sounding too much like the original. The user can also choose to fix the order. 
