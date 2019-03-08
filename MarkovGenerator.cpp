@@ -29,6 +29,8 @@ CK_DLL_MFUN(MarkovGenerator_setLast);
 CK_DLL_MFUN(MarkovGenerator_printMatrix);
 CK_DLL_MFUN(MarkovGenerator_setSeed);
 CK_DLL_MFUN(MarkovGenerator_getSeed);
+CK_DLL_MFUN(MarkovGenerator_setOrder);
+CK_DLL_MFUN(MarkovGenerator_getOrder);
 
 
 // this is a special offset reserved for Chugin internal data
@@ -43,7 +45,7 @@ class MarkovGenerator
 {
 public:
 
-	MarkovGenerator(t_CKINT note = 0) : probabilities(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
+	MarkovGenerator(t_CKINT note = 0) : order(0), seq(), seq_pos(-1), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
 
 	void loadMidi(std::string midi_file = "test.mid") 
@@ -58,6 +60,8 @@ public:
 		}
 		midifile.joinTracks();
 		int track = 0;
+		int last_last_last = 0;
+		int last_last = 0;
 		int last = 0;
 		int next = 0;
 		for (int i = 0; i < midifile[track].size(); i++) 
@@ -65,7 +69,11 @@ public:
 			if (midifile[track][i].isNoteOn()) 
 			{
 				next = midifile[track][i][1] % 12;
-				probabilities[last][next] += 1;
+				probabilities1[last][next] += 1;
+				probabilities2[last_last][last][next] += 1;
+				probabilities3[last_last_last][last_last][last][next] += 1;
+				last_last_last = last_last;
+				last_last = last;
 				last = next;
 			}
 		}
@@ -73,16 +81,70 @@ public:
 
 	t_CKINT next()
 	{
-		std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note)); //Generator for a number from 0 to the sum of the entries for a note in the table
-		int rng_result = gen(rng);
-		//Next, to find what we got and return it
-		char i = 0;
-		for (int total = 0; total < rng_result; i++) { total += probabilities[last_note][i]; }
-		last_note = i;
-		return last_note + (12 * octave);
+		if (seq_pos > 0) {
+			seq_pos--;
+			return seq[seq_pos + 1] + (12 * octave);
+		}
+		int cur_order = order;
+		if (!order) {
+			std::uniform_int_distribution<std::mt19937::result_type> gen(1, 3);
+			cur_order = gen(rng);
+		}
+		switch (cur_order) {
+			case 1:	
+			{	
+				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 1));
+				int rng_result = gen(rng);
+				char i = 0;
+				for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
+				last_note = i;
+				return last_note + (12 * octave);
+			}
+			case 2:
+			{
+				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 2));
+				int rng_result = gen(rng);
+				char i = 0;
+				for (int total = 0; total < rng_result; i++) { 
+					total += probabilities2[last_note][i/12][i%12]; 
+				}
+				seq[0] = i%12;
+				seq_pos = 0;
+				last_note = i/12;
+				return last_note + (12 * octave);
+			}
+			case 3:
+			{
+				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 3));
+				int rng_result = gen(rng);
+				char i = 0;
+				for (int total = 0; total < rng_result; i++) { 
+					total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
+				}
+				seq[0] = (i%144)/12;
+				seq[1] = i%12;
+				seq_pos = 1;
+				last_note = i/144;
+				return last_note + (12 * octave);
+			}
+		}
+		return 0;
 
 	}
 
+	t_CKINT getOrder() { return order; }
+
+	t_CKINT setOrder(t_CKINT new_order)
+	{
+		order = new_order;
+		return new_order;
+	}
+
+	t_CKINT next(t_CKINT cur_note)
+	{
+		setLast(cur_note);
+		return next();
+	}
 
 	t_CKINT getSeed() { return seed; }
 	
@@ -105,7 +167,7 @@ public:
 	{
 		for (int i = 0; i < 12; i++) {
 			for (int j = 0; j < 12; j++) {
-				std::cout << probabilities[i][j] << " ";
+				std::cout << probabilities1[i][j] << " ";
 			}
 			std::cout << std::endl;
 		}
@@ -116,15 +178,32 @@ private:
 	t_CKINT seed;
 	std::mt19937 rng;
 	t_CKINT octave;
-	int probabilities[12][12];
+	int probabilities1[12][12];
+	int probabilities2[12][12][12];
+	int probabilities3[12][12][12][12];
+	int seq[2];
+	int seq_pos;
+	int order;
 	t_CKINT last_note;
 
-	int getCeiling(int note) 
+	int getCeiling(int note, int chain_order = 1) 
 	{
 		int random_ceiling = 0;
-		for ( int i = 0; i < 12; i++ ) 
-		{
-			random_ceiling += probabilities[note%12][i];
+		switch(chain_order) {	
+			case 1:
+				for (int i = 0; i < 12; i++) 
+					random_ceiling += probabilities1[note%12][i];
+				break;
+			case 2:
+				for (int i = 0; i < 12; i++)
+					for (int j = 0; j < 12; j++)
+						random_ceiling += probabilities2[note%12][i][j];
+			case 3:
+				for (int i = 0; i < 12; i++)
+					for (int j = 0; j < 12; j ++)
+						for (int k = 0; k < 12; k++)
+							random_ceiling += probabilities3[note%12][i][j][k];
+
 		}
 		return random_ceiling;
 	}
@@ -166,6 +245,11 @@ CK_DLL_QUERY( MarkovGenerator )
 	QUERY->add_arg(QUERY, "int", "arg");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getSeed, "int", "seed");
+
+	QUERY->add_mfun(QUERY, MarkovGenerator_setOrder, "int", "order");
+	QUERY->add_arg(QUERY, "int", "arg");
+
+	QUERY->add_mfun(QUERY, MarkovGenerator_getOrder, "int", "order");
 
 	// this reserves a variable in the ChucK internal class to store 
 	// referene to the c++ class we defined above
@@ -234,6 +318,14 @@ CK_DLL_MFUN(MarkovGenerator_setLast)
 	RETURN->v_int = m_obj->setLast(GET_NEXT_INT(ARGS));
 }
 
+CK_DLL_MFUN(MarkovGenerator_setOrder)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_int = m_obj->setOrder(GET_NEXT_INT(ARGS));
+}
+
 CK_DLL_MFUN(MarkovGenerator_setSeed)
 {
 	// get our c++ class pointer
@@ -248,6 +340,14 @@ CK_DLL_MFUN(MarkovGenerator_next)
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	// set the return value
 	RETURN->v_int = m_obj->next();
+}
+
+CK_DLL_MFUN(MarkovGenerator_getOrder)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_int = m_obj->getOrder();
 }
 
 CK_DLL_MFUN(MarkovGenerator_getSeed)
