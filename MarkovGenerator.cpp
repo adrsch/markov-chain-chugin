@@ -60,21 +60,41 @@ public:
 		}
 		midifile.joinTracks();
 		int track = 0;
-		int last_last_last = 0;
-		int last_last = 0;
-		int last = 0;
-		int next = 0;
-		for (int i = 0; i < midifile[track].size(); i++) 
-		{
-			if (midifile[track][i].isNoteOn()) 
-			{
-				next = midifile[track][i][1] % 12;
-				probabilities1[last][next] += 1;
-				probabilities2[last_last][last][next] += 1;
-				probabilities3[last_last_last][last_last][last][next] += 1;
-				last_last_last = last_last;
-				last_last = last;
-				last = next;
+		int last[4] = {};
+		int i = 0;
+		int left_to_start = 4;
+		for (i; left_to_start > 0 && i < midifile[track].size(); i++) {
+			if (midifile[track][i].isNoteOn()) {
+				switch (left_to_start) {
+					case 4:
+						last[3] = midifile[track][i];
+						break;
+					case 3:
+						last[2] = midifile[track][i];
+						probabilities1[last[3]][last[2]] += 1;
+						break;
+					case 2:
+						last[1] = midifile[track][i];
+						probabilities2[last[3]][last[2]][last[1]] += 1;
+						break;
+					case 1:
+						last[0] = midifile[track][i];
+						probabilities3[last[3]][last[2]][last[1]][last[0]] += 1;
+						break;
+				}
+				left_to_start--;
+			}
+		}
+
+		for (i; i < midifile[track].size(); i++) {
+			if (midifile[track][i].isNoteOn()) {
+				last[0] = midifile[track][i][1] % 12;
+				probabilities1[last[1]][last[0]] += 1;
+				probabilities2[last[2]][last[1]][last[0]] += 1;
+				probabilities3[last[3]][last[2]][last[1]][last[0]] += 1;
+				last[3] = last[2];
+				last[2] = last[1];
+				last[1] = last[0];
 			}
 		}
 	}
