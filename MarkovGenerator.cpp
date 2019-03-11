@@ -67,18 +67,18 @@ public:
 			if (midifile[track][i].isNoteOn()) {
 				switch (left_to_start) {
 					case 4:
-						last[3] = midifile[track][i];
+						last[3] = midifile[track][i][1] % 12;
 						break;
 					case 3:
-						last[2] = midifile[track][i];
+						last[2] = midifile[track][i][1] % 12;
 						probabilities1[last[3]][last[2]] += 1;
 						break;
 					case 2:
-						last[1] = midifile[track][i];
+						last[1] = midifile[track][i][1] % 12;
 						probabilities2[last[3]][last[2]][last[1]] += 1;
 						break;
 					case 1:
-						last[0] = midifile[track][i];
+						last[0] = midifile[track][i][1] % 12;
 						probabilities3[last[3]][last[2]][last[1]][last[0]] += 1;
 						break;
 				}
