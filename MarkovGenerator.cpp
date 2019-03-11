@@ -31,6 +31,8 @@ CK_DLL_MFUN(MarkovGenerator_setSeed);
 CK_DLL_MFUN(MarkovGenerator_getSeed);
 CK_DLL_MFUN(MarkovGenerator_setOrder);
 CK_DLL_MFUN(MarkovGenerator_getOrder);
+CK_DLL_MFUN(MarkovGenerator_setTonic);
+CK_DLL_MFUN(MarkovGenerator_getTonic);
 
 
 // this is a special offset reserved for Chugin internal data
@@ -45,7 +47,7 @@ class MarkovGenerator
 {
 public:
 
-	MarkovGenerator(t_CKINT note = 0) : order(0), seq(), seq_pos(-1), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
+	MarkovGenerator(t_CKINT note = 0) : tonic(0), order(0), seq(), seq_pos(-1), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
 
 	void loadMidi(std::string midi_file = "test.mid") 
@@ -118,7 +120,7 @@ public:
 				char i = 0;
 				for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
 				last_note = i;
-				return last_note + (12 * octave);
+				break;
 			}
 			case 2:
 			{
@@ -131,7 +133,7 @@ public:
 				seq[0] = i%12;
 				seq_pos = 0;
 				last_note = i/12;
-				return last_note + (12 * octave);
+				break;
 			}
 			case 3:
 			{
@@ -145,10 +147,13 @@ public:
 				seq[1] = i%12;
 				seq_pos = 1;
 				last_note = i/144;
-				return last_note + (12 * octave);
+				break;
 			}
 		}
-		return 0;
+		if (last_note < tonic)
+			return last_note + (13 * octave);
+		else
+			return last_note + (12 * octave);
 
 	}
 
@@ -192,9 +197,17 @@ public:
 			std::cout << std::endl;
 		}
 	}
+
+	t_CKINT getTonic() { return tonic; }
+
+	t_CKINT setTonic(int new_tonic)
+	{
+		tonic = new_tonic % 12;
+		return tonic;
+	}
 	
 private:
-	// instance data
+	t_CKINT tonic;
 	t_CKINT seed;
 	std::mt19937 rng;
 	t_CKINT octave;
@@ -270,6 +283,12 @@ CK_DLL_QUERY( MarkovGenerator )
 	QUERY->add_arg(QUERY, "int", "arg");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getOrder, "int", "order");
+
+	QUERY->add_mfun(QUERY, MarkovGenerator_setTonic, "int", "tonic");
+	QUERY->add_arg(QUERY, "int", "arg");
+
+	QUERY->add_mfun(QUERY, MarkovGenerator_getTonic, "int", "tonic");
+
 
 	// this reserves a variable in the ChucK internal class to store 
 	// referene to the c++ class we defined above
@@ -362,6 +381,24 @@ CK_DLL_MFUN(MarkovGenerator_next)
 	RETURN->v_int = m_obj->next();
 }
 
+CK_DLL_MFUN(MarkovGenerator_setTonic)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_int = m_obj->setTonic(GET_NEXT_INT(ARGS));
+}
+
+
+CK_DLL_MFUN(MarkovGenerator_getTonic)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_int = m_obj->getTonic();
+}
+
+
 CK_DLL_MFUN(MarkovGenerator_getOrder)
 {
 	// get our c++ class pointer
@@ -369,6 +406,7 @@ CK_DLL_MFUN(MarkovGenerator_getOrder)
 	// set the return value
 	RETURN->v_int = m_obj->getOrder();
 }
+
 
 CK_DLL_MFUN(MarkovGenerator_getSeed)
 {
