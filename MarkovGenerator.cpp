@@ -7,6 +7,7 @@
 #include "chuck_dl.h"
 #include "chuck_def.h"
 
+// this is needed for this chugin
 #include "./midifile/MidiFile.h"
 
 // general includes
@@ -23,6 +24,7 @@ CK_DLL_CTOR(MarkovGenerator_ctor);
 // declaration of chugin desctructor
 CK_DLL_DTOR(MarkovGenerator_dtor);
 
+// member functions
 CK_DLL_MFUN(MarkovGenerator_loadMidi);
 CK_DLL_MFUN(MarkovGenerator_next);
 CK_DLL_MFUN(MarkovGenerator_setLast);
@@ -49,7 +51,7 @@ public:
 
 	MarkovGenerator(t_CKINT note = 0) : tonic(0), order(0), seq(), seq_pos(-1), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
-
+	// this function adds the data from a midi file to the table for generation
 	void loadMidi(std::string midi_file = "test.mid") 
 	{
 		smf::MidiFile midifile;
@@ -101,6 +103,7 @@ public:
 		}
 	}
 
+	// generates the next note using the table and the current order
 	t_CKINT next()
 	{
 		if (seq_pos > 0) {
@@ -157,22 +160,28 @@ public:
 
 	}
 
+	// return the current order
 	t_CKINT getOrder() { return order; }
 
+	// set a new order
 	t_CKINT setOrder(t_CKINT new_order)
 	{
 		order = new_order;
 		return new_order;
 	}
 
+	// generate the next note, but set a new note to start at - sequences that have been generated in the past if the order used does so will not be used
 	t_CKINT next(t_CKINT cur_note)
 	{
 		setLast(cur_note);
+		seq_pos = -1;
 		return next();
 	}
 
+	// get the seed used for generation
 	t_CKINT getSeed() { return seed; }
 	
+	// set a new seed for generation
 	t_CKINT setSeed(t_CKINT new_seed)
 	{
 		seed = new_seed;
@@ -180,6 +189,7 @@ public:
 		return new_seed;
 	}
 
+	// set the note to use as the note to calculate the next note from
 	t_CKINT setLast(t_CKINT note) 
 	{
 		octave = note / 12;
@@ -187,7 +197,7 @@ public:
 		return note;
 	}
 
-
+	// send the matrix entires to std::cout
 	void printMatrix() 
 	{
 		for (int i = 0; i < 12; i++) {
@@ -198,8 +208,10 @@ public:
 		}
 	}
 
+	// get the tonic used to calculate which octave the next note should be in
 	t_CKINT getTonic() { return tonic; }
 
+	// set a new tonic
 	t_CKINT setTonic(int new_tonic)
 	{
 		tonic = new_tonic % 12;
@@ -207,18 +219,37 @@ public:
 	}
 	
 private:
+	
+	// this determines which octave a generated note should be in: the octave the generator produces is from tonic to tonic, ie C0-C0 if the tonic is C
 	t_CKINT tonic;
+
+	// this is the seed used for the generator
 	t_CKINT seed;
+	
+	// the random number generator itself
 	std::mt19937 rng;
+
+	// the octave that generated notes should be in
 	t_CKINT octave;
+
+	// probability tables for Markov chains
 	int probabilities1[12][12];
 	int probabilities2[12][12][12];
 	int probabilities3[12][12][12][12];
+
+	// a sequence of notes that are predetermined to come next, as higher order generation produces multiple notes at once but next() only returns the next single note
 	int seq[2];
+
+	// the position in the sequence: 1 is the furthest away, 0 is the closest, -1 is for when nothing is left.
 	int seq_pos;
+
+	// this is the order used for generation. 0 will randomly pick.
 	int order;
+
+	// the note that is used as the note to start from for table lookup
 	t_CKINT last_note;
 
+	// this gets the ceiling for RNG to produce the next note
 	int getCeiling(int note, int chain_order = 1) 
 	{
 		int random_ceiling = 0;

@@ -1,3 +1,5 @@
+IMPORTANT: CHUCK MUST BE INSTALLED! To install ChucK, download 
+
 To use, type make <platform name>
 Where platform name is either linux, win32, or osx.
 
