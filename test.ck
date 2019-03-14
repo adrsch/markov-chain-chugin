@@ -9,6 +9,7 @@ while (true) {
 	int note;
 	test.next() => note;
 	<<<note>>>;
+	<<<test.order()>>>;
 	Math.mtof(note) => s.freq;
 	e.keyOn();
 	200::ms => now;

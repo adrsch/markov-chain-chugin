@@ -1,7 +1,8 @@
-IMPORTANT: CHUCK MUST BE INSTALLED! To install ChucK, download 
+
+Markov Chain Chugin for Chuck
 
 To use, type make <platform name>
-Where platform name is either linux, win32, or osx.
+Where platform name is either linux, win32, or osx. Make sure ChucK is installed first! See the entry below on installing ChucK if this is needed.
 
 Afterwards, type make install
 
@@ -13,11 +14,29 @@ mgen.last(0); //this sets the prior note for generation, in midi numbering (0-12
 <<<mgen.next()>>> //this function gets the next note from the generator, in midi numbering.
 mgen.seed() => mgen.seed; //this is the seed used for generation. if you like what you get, save the seed!
 
+Installing ChucK
+
+IMPORTANT: CHUCK MUST BE INSTALLED! To install ChucK, download http://chuck.cs.princeton.edu/release/files/chuck-1.4.0.0.tgz
+
+Build instructions:
+http://chuck.cs.princeton.edu/doc/build/
+Requirements:
+libsndfile http://www.mega-nerd.com/libsndfile/ (although you can likely get it from a package manager)
+ALSA, JACK, or OSS
+gcc, lex, yacc, make
+
+In essence, likely what will be needed, with aptitude, is:
+apt-get install libsndfile1-dev
+apt-get install libasound2-dev (possibly)
+go into the uncompressed chuck directory
+cd ./src
+make linux-alsa
+make install
 
 
 
 
-This uses the midifile library, with the below license:
+This chugin uses the midifile library, with the below license:
 
 Copyright (c) 1999-2018, Craig Stuart Sapp
 All rights reserved.

@@ -49,7 +49,7 @@ class MarkovGenerator
 {
 public:
 
-	MarkovGenerator(t_CKINT note = 0) : tonic(0), order(0), seq(), seq_pos(-1), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
+	MarkovGenerator(t_CKINT note = 0) : tonic(0), order(0), seq(), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
 	// this function adds the data from a midi file to the table for generation
 	void loadMidi(std::string midi_file = "test.mid") 
@@ -106,53 +106,54 @@ public:
 	// generates the next note using the table and the current order
 	t_CKINT next()
 	{
-		if (seq_pos > 0) {
-			seq_pos--;
-			return seq[seq_pos + 1] + (12 * octave);
+		if (!seq.empty()) {	
+			last_note = seq.back();
+			seq.pop_back();
 		}
-		int cur_order = order;
-		if (!order) {
-			std::uniform_int_distribution<std::mt19937::result_type> gen(1, 3);
-			cur_order = gen(rng);
-		}
-		switch (cur_order) {
-			case 1:	
-			{	
-				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 1));
-				int rng_result = gen(rng);
-				char i = 0;
-				for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
-				last_note = i;
-				break;
+		else {	
+			int cur_order = order;
+			if (!order) {
+				std::uniform_int_distribution<std::mt19937::result_type> gen(1, 3);
+				cur_order = gen(rng);
 			}
-			case 2:
-			{
-				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 2));
-				int rng_result = gen(rng);
-				char i = 0;
-				for (int total = 0; total < rng_result; i++) { 
-					total += probabilities2[last_note][i/12][i%12]; 
+			switch (cur_order) {
+				case 1:	
+				{
+					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 1));
+					int rng_result = gen(rng);
+					int i = 0;
+					for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
+					last_note = i;
+					break;
 				}
-				seq[0] = i%12;
-				seq_pos = 0;
-				last_note = i/12;
-				break;
-			}
-			case 3:
-			{
-				std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 3));
-				int rng_result = gen(rng);
-				char i = 0;
-				for (int total = 0; total < rng_result; i++) { 
-					total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
+				case 2:
+				{
+					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 2));
+					int rng_result = gen(rng);
+					int i = 0;
+					for (int total = 0; total < rng_result; i++) { 
+						total += probabilities2[last_note][i/12][i%12]; 
+					}
+					seq.push_back(i%12);
+					last_note = i/12;
+					break;
 				}
-				seq[0] = (i%144)/12;
-				seq[1] = i%12;
-				seq_pos = 1;
-				last_note = i/144;
-				break;
+				case 3:
+				{
+					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note, 3));
+					int rng_result = gen(rng);
+					int i = 0;
+					for (int total = 0; total < rng_result; i++) { 
+						total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
+					}
+					seq.push_back((i%144)/12);
+					seq.push_back(i%12);
+					last_note = i/144;
+					break;
+				}
 			}
 		}
+
 		if (last_note < tonic)
 			return last_note + (13 * octave);
 		else
@@ -166,6 +167,8 @@ public:
 	// set a new order
 	t_CKINT setOrder(t_CKINT new_order)
 	{
+		if (new_order < 0 || new_order > 3)
+			throw std::invalid_argument("Order not valid! Orders 1-3 are supported. Use 0 to pick one randomly each time new notes are generated.");
 		order = new_order;
 		return new_order;
 	}
@@ -174,7 +177,6 @@ public:
 	t_CKINT next(t_CKINT cur_note)
 	{
 		setLast(cur_note);
-		seq_pos = -1;
 		return next();
 	}
 
@@ -194,6 +196,7 @@ public:
 	{
 		octave = note / 12;
 		last_note = note % 12;
+		seq.clear();
 		return note;
 	}
 
@@ -232,16 +235,13 @@ private:
 	// the octave that generated notes should be in
 	t_CKINT octave;
 
-	// probability tables for Markov chains
+	// probability tables for Markov chains - 3 of them, as up to order 3 is supported
 	int probabilities1[12][12];
 	int probabilities2[12][12][12];
 	int probabilities3[12][12][12][12];
 
 	// a sequence of notes that are predetermined to come next, as higher order generation produces multiple notes at once but next() only returns the next single note
-	int seq[2];
-
-	// the position in the sequence: 1 is the furthest away, 0 is the closest, -1 is for when nothing is left.
-	int seq_pos;
+	std::vector<int> seq;
 
 	// this is the order used for generation. 0 will randomly pick.
 	int order;
