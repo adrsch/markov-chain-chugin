@@ -14,5 +14,6 @@ while (true) {
 	e.keyOn();
 	200::ms => now;
 	e.keyOff();
+	test.next();
 }
 

@@ -27,6 +27,7 @@ CK_DLL_DTOR(MarkovGenerator_dtor);
 // member functions
 CK_DLL_MFUN(MarkovGenerator_loadMidi);
 CK_DLL_MFUN(MarkovGenerator_next);
+CK_DLL_MFUN(MarkovGenerator_next_arg);
 CK_DLL_MFUN(MarkovGenerator_setLast);
 CK_DLL_MFUN(MarkovGenerator_printMatrix);
 CK_DLL_MFUN(MarkovGenerator_setSeed);
@@ -194,6 +195,8 @@ public:
 	// set the note to use as the note to calculate the next note from
 	t_CKINT setLast(t_CKINT note) 
 	{
+		if (note < 0)
+			throw std::invalid_argument("A negative note was used. Please use a positive note value.");
 		octave = note / 12;
 		last_note = note % 12;
 		seq.clear();
@@ -203,9 +206,18 @@ public:
 	// send the matrix entires to std::cout
 	void printMatrix() 
 	{
+		int entry;
 		for (int i = 0; i < 12; i++) {
 			for (int j = 0; j < 12; j++) {
-				std::cout << probabilities1[i][j] << " ";
+				entry = probabilities1[i][j];
+				if (entry < 9)
+					std::cout << entry << "   ";
+				else if (entry < 99)
+					std::cout << entry << "  ";
+				else if (entry < 999)
+					std::cout << entry << " ";
+				else
+					std::cout << entry;
 			}
 			std::cout << std::endl;
 		}
@@ -300,7 +312,11 @@ CK_DLL_QUERY( MarkovGenerator )
 	QUERY->add_arg(QUERY, "string", "arg");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_printMatrix, "void", "printMatrix");
+
 	QUERY->add_mfun(QUERY, MarkovGenerator_next, "int", "next");
+
+	QUERY->add_mfun(QUERY, MarkovGenerator_next_arg, "int", "next");
+	QUERY->add_arg(QUERY, "int", "arg");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_setLast, "int", "last");
 	QUERY->add_arg(QUERY, "int", "arg");
@@ -410,6 +426,14 @@ CK_DLL_MFUN(MarkovGenerator_next)
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	// set the return value
 	RETURN->v_int = m_obj->next();
+}
+
+CK_DLL_MFUN(MarkovGenerator_next_arg)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	// set the return value
+	RETURN->v_int = m_obj->next(GET_NEXT_INT(ARGS));
 }
 
 CK_DLL_MFUN(MarkovGenerator_setTonic)
