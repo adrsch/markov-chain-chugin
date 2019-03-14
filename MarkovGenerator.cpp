@@ -401,7 +401,11 @@ CK_DLL_MFUN(MarkovGenerator_setLast)
 	// get our c++ class pointer
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	// set the return value
-	RETURN->v_int = m_obj->setLast(GET_NEXT_INT(ARGS));
+	try { RETURN->v_int = m_obj->setLast(GET_NEXT_INT(ARGS)); }
+	catch (const std::invalid_argument& e) {
+		std::cerr << e.what() << std::endl;
+		RETURN->v_int = GET_NEXT_INT(ARGS);
+	}
 }
 
 CK_DLL_MFUN(MarkovGenerator_setOrder)
@@ -409,7 +413,11 @@ CK_DLL_MFUN(MarkovGenerator_setOrder)
 	// get our c++ class pointer
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	// set the return value
-	RETURN->v_int = m_obj->setOrder(GET_NEXT_INT(ARGS));
+	try { RETURN->v_int = m_obj->setOrder(GET_NEXT_INT(ARGS)); }
+	catch (const std::invalid_argument& e) {
+		std::cerr << e.what() << std::endl;
+		RETURN->v_int = m_obj->getOrder();
+	}
 }
 
 CK_DLL_MFUN(MarkovGenerator_setSeed)
