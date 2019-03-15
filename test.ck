@@ -13,8 +13,6 @@ mgen.order() => mgen.order; //the order generation is based on. 1-3 are allowed,
 while (true) {
 	int note;
 	mgen.next() => note; //generate the next note, in midi numbering. a new last note to start generation from can optionally be passed, ie test.next(12*4)
-	<<<"This time, we got:">>>;
 	<<<note>>>;
- it can be played
 	500::ms => now;
 }
