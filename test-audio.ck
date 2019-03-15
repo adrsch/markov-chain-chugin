@@ -1,5 +1,5 @@
 MarkovGenerator test;
-test.loadMidi("test.mid");
+test.loadMidi("vexation.mid");
 1 => test.order;
 test.printMatrix();
 test.last(12*5);
