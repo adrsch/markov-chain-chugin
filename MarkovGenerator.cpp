@@ -2,7 +2,6 @@
 // Markov Chain Note Generation ChuGin
 // See readme.txt along with test.ck and test-audio.ck to learn how to use it!
 //-----------------------------------------------------------------------------
-
 // this should align with the correct versions of these ChucK files
 #include "chuck_dl.h"
 #include "chuck_def.h"
@@ -135,8 +134,12 @@ public:
 					for (int total = 0; total < rng_result; i++) {
 						total += probabilities2[last_note][i/12][i%12]; 
 					}
+					std::cerr << "cel" << getCeiling(last_note);
+					std::cerr << " i " << i;
+					std::cerr << "ast "<< last_note;
 					seq.push_back(i%12);
 					last_note = i/12;
+					std::cerr << " new " <<last_note << std::endl;
 					break;
 				}
 				case 3:
@@ -144,12 +147,21 @@ public:
 					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note));
 					int rng_result = gen(rng);
 					int i = 0;
-					for (int total = 0; total < rng_result; i++) { 
+					int total;
+					for (total = 0; total < rng_result; i++) {
+					       	std::cerr << " i " << i;	
 						total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
+						std::cerr << "tot " << total <<std::endl;
 					}
+					std::cerr << "rng " << rng_result;
+					std::cerr <<	" total " << total;
+					std::cerr << "cel" << getCeiling(last_note);
+					std::cerr << " i " << i;
+					std::cerr << "ast "<< last_note;
 					seq.push_back((i%144)/12);
 					seq.push_back(i%12);
 					last_note = i/144;
+					std::cerr << " new " <<last_note << std::endl;
 					break;
 				}
 			}
@@ -268,12 +280,18 @@ private:
 				random_ceiling += probabilities1[note%12][i];
 		return random_ceiling;
 	}
+	
+
+	void fixDeadEnds()
+	{
+		for (int i = 0; i < 12; i++)
+			return;
+	}
+
 };
 
 
 // query function: chuck calls this when loading the Chugin
-// NOTE: developer will need to modify this function to
-// add additional functions to this Chugin
 CK_DLL_QUERY( MarkovGenerator )
 {
 	// hmm, don't change this...
@@ -340,10 +358,16 @@ CK_DLL_CTOR(MarkovGenerator_ctor)
 {
 	// get the offset where we'll store our internal c++ class pointer
 	OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset) = 0;
-	
+
+	MarkovGenerator * m_obj;	
 	// instantiate our internal c++ class representation
-	MarkovGenerator * m_obj = new MarkovGenerator();
-	
+	try { m_obj = new MarkovGenerator(); }
+	catch (const std::bad_alloc& e)
+	{
+		std::cerr << "Could not allocate memory! This is not good! No MarkovGenerator was created." << std::endl;
+		throw;
+	}
+		
 	// set the seed
 	m_obj -> setSeed(m_obj -> getSeed());
 	
