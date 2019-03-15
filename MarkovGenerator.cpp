@@ -35,7 +35,8 @@ CK_DLL_MFUN(MarkovGenerator_setOrder);
 CK_DLL_MFUN(MarkovGenerator_getOrder);
 CK_DLL_MFUN(MarkovGenerator_setTonic);
 CK_DLL_MFUN(MarkovGenerator_getTonic);
-
+CK_DLL_MFUN(MarkovGenerator_scaleNote);
+CK_DLL_MFUN(MarkovGenerator_fixDeadEnds);
 
 // this is a special offset reserved for Chugin internal data
 t_CKINT MarkovGenerator_data_offset = 0;
@@ -104,8 +105,10 @@ public:
 	// generates the next note using the table and the current order
 	t_CKINT next()
 	{
-		fixDeadEnds();
 		if (empty) { throw std::logic_error("Please load a midi file in using loadMidi(\"filename.mid\" before trying to generate notes!"); }
+
+		int rng_ceiling = getCeiling(last_note);
+		if (rng_ceiling == 0) { throw std::logic_error("There is no way out of the current note! We're at a dead end!"); }
 		if (!seq.empty()) {	
 			last_note = seq.back();
 			seq.pop_back();
@@ -116,11 +119,11 @@ public:
 				std::uniform_int_distribution<std::mt19937::result_type> gen(1, 3);
 				cur_order = gen(rng);
 			}
+			std::uniform_int_distribution<std::mt19937::result_type> gen(0, rng_ceiling);
+			int rng_result = gen(rng);
 			switch (cur_order) {
 				case 1:	
 				{
-					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note));
-					int rng_result = gen(rng);
 					int i = 0;
 					for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
 					last_note = i;
@@ -128,40 +131,23 @@ public:
 				}
 				case 2:
 				{
-					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note));
-					int rng_result = gen(rng);
 					int i = 0;
 					for (int total = 0; total < rng_result; i++) {
 						total += probabilities2[last_note][i/12][i%12]; 
 					}
-					std::cerr << "cel" << getCeiling(last_note);
-					std::cerr << " i " << i;
-					std::cerr << "ast "<< last_note;
 					seq.push_back(i%12);
 					last_note = i/12;
-					std::cerr << " new " <<last_note << std::endl;
 					break;
 				}
 				case 3:
 				{
-					std::uniform_int_distribution<std::mt19937::result_type> gen(0, getCeiling(last_note));
-					int rng_result = gen(rng);
 					int i = 0;
-					int total;
-					for (total = 0; total < rng_result; i++) {
-					       	std::cerr << " i " << i;	
+					for (int total = 0; total < rng_result; i++) {
 						total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
-						std::cerr << "tot " << total <<std::endl;
 					}
-					std::cerr << "rng " << rng_result;
-					std::cerr <<	" total " << total;
-					std::cerr << "cel" << getCeiling(last_note);
-					std::cerr << " i " << i;
-					std::cerr << "ast "<< last_note;
 					seq.push_back((i%144)/12);
 					seq.push_back(i%12);
 					last_note = i/144;
-					std::cerr << " new " <<last_note << std::endl;
 					break;
 				}
 			}
@@ -260,6 +246,17 @@ public:
 			}
 		}
 	}
+
+	// remove any notes that lead to dead ends
+	void fixDeadEnds()
+	{
+		empty = false;
+		for (int i = 0; i < 12; i++) {
+			if (getCeiling(i) == 0) { scaleNote(i, 0); }
+			else { empty = true; }
+		}
+		if (!empty) { fixDeadEnds(); }
+	}
 	
 private:
 	
@@ -301,16 +298,6 @@ private:
 		return random_ceiling;
 	}
 	
-	// this removes any notes from the table that have no notes to jump to from them
-	void fixDeadEnds()
-	{
-		empty = false;
-		for (int i = 0; i < 12; i++) {
-			if (getCeiling(i) == 0) { scaleNote(i, 0); }
-			else { empty = true; }
-		}
-	}
-
 };
 
 
@@ -362,6 +349,10 @@ CK_DLL_QUERY( MarkovGenerator )
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getTonic, "int", "tonic");
 
+	QUERY->add_mfun(QUERY, MarkovGenerator_fixDeadEnds, "void", "fixDeadEnds");
+	QUERY->add_mfun(QUERY, MarkovGenerator_scaleNote, "void", "scaleNote");
+	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "float", "arg");
 
 	// this reserves a variable in the ChucK internal class to store 
 	// referene to the c++ class we defined above
@@ -426,6 +417,20 @@ CK_DLL_MFUN(MarkovGenerator_printMatrix)
 	// get our c++ class pointer
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	m_obj->printMatrix();
+}
+
+CK_DLL_MFUN(MarkovGenerator_scaleNote)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	m_obj->scaleNote(GET_NEXT_INT(ARGS), GET_NEXT_FLOAT(ARGS));
+}
+
+CK_DLL_MFUN(MarkovGenerator_fixDeadEnds)
+{
+	// get our c++ class pointer
+	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
+	m_obj->fixDeadEnds();
 }
 
 CK_DLL_MFUN(MarkovGenerator_setLast)
