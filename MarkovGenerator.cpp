@@ -36,7 +36,6 @@ CK_DLL_MFUN(MarkovGenerator_getOrder);
 CK_DLL_MFUN(MarkovGenerator_setTonic);
 CK_DLL_MFUN(MarkovGenerator_getTonic);
 CK_DLL_MFUN(MarkovGenerator_scaleNote);
-CK_DLL_MFUN(MarkovGenerator_fixDeadEnds);
 
 // this is a special offset reserved for Chugin internal data
 t_CKINT MarkovGenerator_data_offset = 0;
@@ -107,8 +106,6 @@ public:
 	{
 		if (empty) { throw std::logic_error("Please load a midi file in using loadMidi(\"filename.mid\" before trying to generate notes!"); }
 
-		int rng_ceiling = getCeiling(last_note);
-		if (rng_ceiling == 0) { throw std::logic_error("There is no way out of the current note! We're at a dead end!"); }
 		if (!seq.empty()) {	
 			last_note = seq.back();
 			seq.pop_back();
@@ -119,20 +116,28 @@ public:
 				std::uniform_int_distribution<std::mt19937::result_type> gen(1, 3);
 				cur_order = gen(rng);
 			}
-			std::uniform_int_distribution<std::mt19937::result_type> gen(0, rng_ceiling);
+			int rng_ceiling = getCeiling(last_note);
+			if (rng_ceiling == 0) { throw std::logic_error("Dead end reached!"); }
+			std::uniform_int_distribution<std::mt19937::result_type> gen(1, rng_ceiling);
 			int rng_result = gen(rng);
 			switch (cur_order) {
 				case 1:	
 				{
-					int i = 0;
-					for (int total = 0; total < rng_result; i++) { total += probabilities1[last_note][i]; }
+					int i = -1;
+					int total = 0;
+					while (total < rng_result) { 
+						i++;
+						total += probabilities1[last_note][i]; 
+					}
 					last_note = i;
 					break;
 				}
 				case 2:
 				{
-					int i = 0;
-					for (int total = 0; total < rng_result; i++) {
+					int i = -1;
+					int total = 0;
+					while (total < rng_result) { 
+						i++;
 						total += probabilities2[last_note][i/12][i%12]; 
 					}
 					seq.push_back(i%12);
@@ -141,8 +146,10 @@ public:
 				}
 				case 3:
 				{
-					int i = 0;
-					for (int total = 0; total < rng_result; i++) {
+					int i = -1;
+					int total = 0;
+					while (total < rng_result) { 
+						i++;
 						total += probabilities3[last_note][i/144][(i%144)/12][i%12]; 
 					}
 					seq.push_back((i%144)/12);
@@ -246,17 +253,6 @@ public:
 			}
 		}
 	}
-
-	// remove any notes that lead to dead ends
-	void fixDeadEnds()
-	{
-		empty = false;
-		for (int i = 0; i < 12; i++) {
-			if (getCeiling(i) == 0) { scaleNote(i, 0); }
-			else { empty = true; }
-		}
-		if (!empty) { fixDeadEnds(); }
-	}
 	
 private:
 	
@@ -322,37 +318,36 @@ CK_DLL_QUERY( MarkovGenerator )
 	// and declare a tickf function using CK_DLL_TICKF
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_loadMidi, "void", "loadMidi");
-	QUERY->add_arg(QUERY, "string", "arg");
+	QUERY->add_arg(QUERY, "string", "filename");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_printMatrix, "void", "printMatrix");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_next, "int", "next");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_next_arg, "int", "next");
-	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "int", "note");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_setLast, "int", "last");
-	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "int", "note");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_setSeed, "int", "seed");
-	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "int", "seed");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getSeed, "int", "seed");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_setOrder, "int", "order");
-	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "int", "order");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getOrder, "int", "order");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_setTonic, "int", "tonic");
-	QUERY->add_arg(QUERY, "int", "arg");
+	QUERY->add_arg(QUERY, "int", "tonic");
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getTonic, "int", "tonic");
 
-	QUERY->add_mfun(QUERY, MarkovGenerator_fixDeadEnds, "void", "fixDeadEnds");
 	QUERY->add_mfun(QUERY, MarkovGenerator_scaleNote, "void", "scaleNote");
-	QUERY->add_arg(QUERY, "int", "arg");
-	QUERY->add_arg(QUERY, "float", "arg");
+	QUERY->add_arg(QUERY, "int", "note");
+	QUERY->add_arg(QUERY, "float", "amount");
 
 	// this reserves a variable in the ChucK internal class to store 
 	// referene to the c++ class we defined above
@@ -424,13 +419,6 @@ CK_DLL_MFUN(MarkovGenerator_scaleNote)
 	// get our c++ class pointer
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	m_obj->scaleNote(GET_NEXT_INT(ARGS), GET_NEXT_FLOAT(ARGS));
-}
-
-CK_DLL_MFUN(MarkovGenerator_fixDeadEnds)
-{
-	// get our c++ class pointer
-	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-	m_obj->fixDeadEnds();
 }
 
 CK_DLL_MFUN(MarkovGenerator_setLast)
