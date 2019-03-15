@@ -28,13 +28,19 @@ gcc, lex, yacc, make
 In essence, likely what will be needed, with aptitude, is:
 apt-get install libsndfile1-dev
 apt-get install libasound2-dev (possibly)
-go into the uncompressed chuck directory
+Uncompress the tar and go into the folder
 cd ./src
 make linux-alsa
 make install
 
+You might also want to do:
+apt-get install libpulse-dev
+make linux-pulse
+Instead of using the linux-alsa version, because, at least on my test machine, alsa has trouble actually playing any audio. That being said, this chugin itself doesn't have anything audio-related in it, although the provided test-audio.ck file will play audio if it is supported on your machine.
 
+An Addendum For Visual Studio Users
 
+You may notice VS project files are pretty much always included with ChuGins. This is because Chuginate, which generates a blueprint for making ChuGins, generates them automatically. However, as I don't use VS and would have no way to verify if they actually worked, so I removed them. If you want them, generate a fresh blueprint from Chuginate for MarkovGenerator, then paste this code over it and you'll have a version with VS project files.
 
 This chugin uses the midifile library, with the below license:
 

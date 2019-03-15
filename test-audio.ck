@@ -2,7 +2,6 @@ MarkovGenerator test;
 test.loadMidi("roygbiv.mid");
 test.printMatrix();
 test.last(12*4);
-2 => test.order;
 <<<test.seed()>>>;
 SinOsc s => ADSR e => dac;
 e.set(10::ms, 500::ms, 0, 500::ms);
