@@ -15,17 +15,20 @@ The ChuGin template generator, Chuginate, was used. It is found in the official 
 2. Usage
 
 Try it out in action!
-Type "chuck test" for a silent test, or "chuck test-audio" to hear some sine waves.
+Type "chuck test", or "chuck test-audio" to hear some sine waves.
 
 To use in Chuck:
-(note that the following is identical to test.ck)
-
 MarkovGenerator mgen;
-mgen.loadMidi("filename.mid");
-mgen.printMatrix(); //print the matrix used for generation - each number is a note played in the loaded midis
-mgen.last(0); //this sets the prior note for generation, in midi numbering (0-12 is C0 to C1). by default, C0 is used.
-<<<mgen.next()>>> //this function gets the next note from the generator, in midi numbering.
-mgen.seed() => mgen.seed; //this is the seed used for generation. if you like what you get, save the seed!
+mgen.loadMidi("test.mid"); //load the midi named test.mid into the generator's matrix
+mgen.printMatrix(); //print the first order matrix used for generation - each number is a note played in the loaded midis.
+mgen.loadMidi("test.mid"); //load in a second midi, to get a more full table
+mgen.printMatrix(); //loading the same midi in twice isn't too interesting, though!
+
+mgen.last(12*5); //set the prior note for generation, in midi numbering (0-12 is C0 to C1). by default, C0 is used. the octave generated notes fall in is also set.
+mgen.tonic(2); //set the base note of the octave notes fall in. by default it, is 0.
+mgen.seed() => mgen.seed; //this is the seed used for generation. if you like what you hear, save the seed!
+mgen.order() => mgen.order; //the order generation is based on. 1-3 are allowed, and 0, the default, randomly picks between these.
+<<<mgen.next()>>>; //generate the next note, in midi numbering. a new last note to start generation from can optionally be passed, ie test.next(12*4)
 
 3. Installing ChucK
 

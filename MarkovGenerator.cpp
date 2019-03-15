@@ -35,7 +35,6 @@ CK_DLL_MFUN(MarkovGenerator_setOrder);
 CK_DLL_MFUN(MarkovGenerator_getOrder);
 CK_DLL_MFUN(MarkovGenerator_setTonic);
 CK_DLL_MFUN(MarkovGenerator_getTonic);
-CK_DLL_MFUN(MarkovGenerator_scaleNote);
 
 // this is a special offset reserved for Chugin internal data
 t_CKINT MarkovGenerator_data_offset = 0;
@@ -160,9 +159,9 @@ public:
 			}
 		}
 		if (last_note < tonic)
-			return last_note + (13 * octave);
+			return last_note%12 + (13 * octave);
 		else
-			return last_note + (12 * octave);
+			return last_note%12 + (12 * octave);
 
 	}
 
@@ -235,23 +234,6 @@ public:
 	{
 		tonic = new_tonic % 12;
 		return tonic;
-	}
-
-	// scales the probability of a note being chosen, from any note
-	void scaleNote(int note, float amt)
-	{
-		if (amt < 0)
-			throw std::invalid_argument("A negative value cannot be used to scale the probabilities!");
-		note = note % 12;
-		for (int i = 0; i < 12; i++) {
-			probabilities1[i][note] *= amt;
-			for (int j = 0; j < 12; j++) {
-				probabilities2[i][j][note] *= amt;
-				for (int k = 0; k < 12; k++) {
-					probabilities3[i][j][k][note] *= amt;
-				}
-			}
-		}
 	}
 	
 private:
@@ -345,10 +327,6 @@ CK_DLL_QUERY( MarkovGenerator )
 
 	QUERY->add_mfun(QUERY, MarkovGenerator_getTonic, "int", "tonic");
 
-	QUERY->add_mfun(QUERY, MarkovGenerator_scaleNote, "void", "scaleNote");
-	QUERY->add_arg(QUERY, "int", "note");
-	QUERY->add_arg(QUERY, "float", "amount");
-
 	// this reserves a variable in the ChucK internal class to store 
 	// referene to the c++ class we defined above
 	MarkovGenerator_data_offset = QUERY->add_mvar(QUERY, "int", "@m_data", false);
@@ -412,13 +390,6 @@ CK_DLL_MFUN(MarkovGenerator_printMatrix)
 	// get our c++ class pointer
 	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
 	m_obj->printMatrix();
-}
-
-CK_DLL_MFUN(MarkovGenerator_scaleNote)
-{
-	// get our c++ class pointer
-	MarkovGenerator * m_obj = (MarkovGenerator *) OBJ_MEMBER_INT(SELF, MarkovGenerator_data_offset);
-	m_obj->scaleNote(GET_NEXT_INT(ARGS), GET_NEXT_FLOAT(ARGS));
 }
 
 CK_DLL_MFUN(MarkovGenerator_setLast)
