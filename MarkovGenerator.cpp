@@ -49,7 +49,7 @@ class MarkovGenerator
 {
 public:
 
-	MarkovGenerator(t_CKINT note = 0) : tonic(0), order(0), seq(), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
+	MarkovGenerator(t_CKINT note = 0) : empty(true), tonic(0), order(0), seq(), probabilities1(),probabilities2(), probabilities3(), last_note(note%12), octave(note/12), seed(std::random_device{}()) {}
 
 	// this function adds the data from a midi file to the table for generation
 	void loadMidi(std::string midi_file = "test.mid") 
@@ -57,13 +57,11 @@ public:
 		smf::MidiFile midifile;
 		midifile.read(midi_file);
 		
-		if (!midifile.status()) 
-		{
-			std::cout << "bad file name" << std::endl;
-			return;
-		}
+		if (!midifile.status()) { throw std::invalid_argument("Bad filename."); }
 		midifile.joinTracks();
 		int track = 0;
+		if (midifile[track].size() == 0) { throw std::invalid_argument("No notes are present in the file. Could not load anything from it."); }
+		empty = false;
 		int last[4] = {};
 		int i = 0;
 		int left_to_start = 4;
@@ -106,6 +104,8 @@ public:
 	// generates the next note using the table and the current order
 	t_CKINT next()
 	{
+		fixDeadEnds();
+		if (empty) { throw std::logic_error("Please load a midi file in using loadMidi(\"filename.mid\" before trying to generate notes!"); }
 		if (!seq.empty()) {	
 			last_note = seq.back();
 			seq.pop_back();
@@ -243,9 +243,29 @@ public:
 		tonic = new_tonic % 12;
 		return tonic;
 	}
+
+	// scales the probability of a note being chosen, from any note
+	void scaleNote(int note, float amt)
+	{
+		if (amt < 0)
+			throw std::invalid_argument("A negative value cannot be used to scale the probabilities!");
+		note = note % 12;
+		for (int i = 0; i < 12; i++) {
+			probabilities1[i][note] *= amt;
+			for (int j = 0; j < 12; j++) {
+				probabilities2[i][j][note] *= amt;
+				for (int k = 0; k < 12; k++) {
+					probabilities3[i][j][k][note] *= amt;
+				}
+			}
+		}
+	}
 	
 private:
 	
+	// this identicates whether the tables have anything in them
+	bool empty;
+
 	// this determines which octave a generated note should be in: the octave the generator produces is from tonic to tonic, ie C0-C0 if the tonic is C
 	t_CKINT tonic;
 
@@ -281,11 +301,14 @@ private:
 		return random_ceiling;
 	}
 	
-
+	// this removes any notes from the table that have no notes to jump to from them
 	void fixDeadEnds()
 	{
-		for (int i = 0; i < 12; i++)
-			return;
+		empty = false;
+		for (int i = 0; i < 12; i++) {
+			if (getCeiling(i) == 0) { scaleNote(i, 0); }
+			else { empty = true; }
+		}
 	}
 
 };
@@ -365,7 +388,7 @@ CK_DLL_CTOR(MarkovGenerator_ctor)
 	catch (const std::bad_alloc& e)
 	{
 		std::cerr << "Could not allocate memory! This is not good! No MarkovGenerator was created." << std::endl;
-		throw;
+		return;
 	}
 		
 	// set the seed
